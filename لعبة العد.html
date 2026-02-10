@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>لعبة الأعداد</title>
+  <style>
+    * { box-sizing: border-box; }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden; /* منع التمرير */
+    }
+
+    body {
+      font-family: "Tahoma", sans-serif;
+      background: linear-gradient(135deg, #ffecd2, #fcb69f);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .game-container {
+      background: #ffffff;
+      border-radius: 24px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+      padding: 12px 12px 16px;
+      width: 100%;
+      max-width: 950px;
+      height: 100%;
+      max-height: 680px;
+      display: flex;
+      flex-direction: row;
+      align-items: stretch;
+      border: 4px solid #ffd166;
+      position: relative;
+      overflow: hidden;
+      gap: 10px;
+    }
+
+    .game-container::before {
+      content: "✏️";
+      position: absolute;
+      font-size: 40px;
+      opacity: 0.15;
+      left: 12px;
+      top: 8px;
+    }
+
+    .game-container::after {
+      content: "🎈";
+      position: absolute;
+      font-size: 40px;
+      opacity: 0.15;
+      right: 16px;
+      bottom: 8px;
+    }
+
+    .main-column {
+      flex: 3;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .side-column {
+      flex: 1;
+      background: #f1f7ff;
+      border-radius: 18px;
+      border: 2px dashed #8ecae6;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      min-width: 150px;
+      max-width: 220px;
+    }
+
+    h1 {
+      font-size: clamp(20px, 3vw, 28px);
+      margin: 4px 0 4px;
+      color: #1b3b6f;
+      text-align: center;
+    }
+
+    .teacher-name {
+      font-size: clamp(14px, 2vw, 16px);
+      color: #555;
+      margin-bottom: 8px;
+      text-align: center;
+    }
+
+    .problem-box {
+      background: #f1f7ff;
+      border-radius: 18px;
+      padding: 8px 12px;
+      margin-bottom: 10px;
+      border: 2px dashed #8ecae6;
+      width: 100%;
+      max-width: 600px;
+      text-align: center;
+    }
+
+    .problem {
+      font-size: clamp(24px, 4vw, 34px);
+      color: #023047;
+      font-weight: bold;
+      min-height: 32px;
+    }
+
+    .apples-title {
+      font-size: clamp(12px, 1.8vw, 14px);
+      color: #555;
+      margin-top: 6px;
+      margin-bottom: 4px;
+      text-align: center;
+    }
+
+    .apples-area-wrapper {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+    }
+
+    .apples-area {
+      margin: 4px 0 12px;
+      min-height: 60px;
+      background: #fff7e6;
+      border-radius: 16px;
+      padding: 8px;
+      border: 2px solid #ffd166;
+      width: 100%;
+      max-width: 600px;
+      text-align: center;
+      overflow: hidden;
+    }
+
+    .item {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: clamp(20px, 3vw, 32px);
+      margin: 3px;
+      opacity: 0;
+      transform: scale(0.4);
+      transition: opacity 0.25s ease, transform 0.25s ease, filter 0.25s ease;
+    }
+
+    .item.visible {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    /* لمعان النجوم */
+    .item-glow {
+      animation: starGlow 0.8s ease-in-out 0s 1;
+      box-shadow: 0 0 8px 2px rgba(255, 215, 0, 0.8);
+      border-radius: 50%;
+    }
+
+    @keyframes starGlow {
+      0%   { transform: scale(1);   box-shadow: 0 0 0 0 rgba(255,215,0,0.0); }
+      50%  { transform: scale(1.25); box-shadow: 0 0 14px 4px rgba(255,215,0,0.9); }
+      100% { transform: scale(1);   box-shadow: 0 0 0 0 rgba(255,215,0,0.0); }
+    }
+
+    /* اهتزاز عند الإجابة الصحيحة */
+    .item-shake {
+      animation: starShake 0.5s cubic-bezier(.36,.07,.19,.97) 0s 1 both;
+    }
+
+    @keyframes starShake {
+      10%, 90% { transform: translate3d(-1px, 0, 0); }
+      20%, 80% { transform: translate3d(2px, 0, 0); }
+      30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+      40%, 60% { transform: translate3d(4px, 0, 0); }
+    }
+
+    /* ذبول النجوم المتبقية عند الخطأ */
+    .item-fade {
+      filter: grayscale(0.9);
+      opacity: 0.25;
+      transform: scale(0.9);
+    }
+
+    /* دوائر إضافية بلا نجوم عند زيادة العدد */
+    .item-empty {
+      width: 2.2em;
+      height: 2.2em;
+      border-radius: 50%;
+      border: 2px dashed #ffb703;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin: 3px;
+      opacity: 0.4;
+    }
+
+    .input-area {
+      margin-top: 4px;
+      margin-bottom: 4px;
+      text-align: center;
+    }
+
+    label {
+      font-size: clamp(14px, 2vw, 16px);
+      color: #333;
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    input[type="number"] {
+      font-size: clamp(18px, 2.5vw, 20px);
+      padding: 6px 10px;
+      border-radius: 12px;
+      border: 2px solid #8ecae6;
+      width: min(160px, 40vw);
+      text-align: center;
+      outline: none;
+    }
+
+    input[type="number"]:focus {
+      border-color: #219ebc;
+      box-shadow: 0 0 4px rgba(33,158,188,0.6);
+    }
+
+    input[disabled] {
+      background-color: #eee;
+      cursor: not-allowed;
+    }
+
+    .buttons {
+      margin-top: 6px;
+      margin-bottom: 4px;
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    button {
+      padding: 8px 18px;
+      font-size: clamp(14px, 2vw, 16px);
+      border-radius: 999px;
+      border: none;
+      cursor: pointer;
+      color: #fff;
+      transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.2s ease;
+      min-width: 120px;
+    }
+
+    button:active {
+      transform: scale(0.97);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    }
+
+    button:disabled {
+      background: #b0bec5;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .btn-check {
+      background: #06d6a0;
+      box-shadow: 0 4px 10px rgba(6,214,160,0.5);
+    }
+
+    .btn-check:hover:not(:disabled) { background: #04b488; }
+
+    .message {
+      margin-top: 6px;
+      font-size: clamp(14px, 2vw, 16px);
+      min-height: 24px;
+      text-align: center;
+    }
+
+    .correct { color: #06d6a0; font-weight: bold; }
+    .wrong { color: #e63946; font-weight: bold; }
+
+    .spacer { flex: 1; }
+
+    .level-title {
+      font-size: clamp(16px, 2.4vw, 18px);
+      color: #1b3b6f;
+      margin-bottom: 6px;
+      font-weight: bold;
+    }
+
+    .level-badge {
+      width: 90px;
+      height: 90px;
+      border-radius: 50%;
+      background: #ffd166;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: clamp(24px, 4vw, 30px);
+      margin-bottom: 6px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    }
+
+    .level-name {
+      font-size: clamp(14px, 2vw, 16px);
+      margin-bottom: 4px;
+      text-align: center;
+      color: #333;
+    }
+
+    .level-detail {
+      font-size: clamp(12px, 1.8vw, 14px);
+      text-align: center;
+      color: #555;
+      margin-bottom: 8px;
+    }
+
+    .side-score {
+      font-size: clamp(12px, 1.8vw, 14px);
+      text-align: center;
+      color: #333;
+      margin-top: 4px;
+    }
+
+    .streak-info {
+      font-size: clamp(12px, 1.8vw, 14px);
+      text-align: center;
+      color: #1b3b6f;
+      margin-top: 6px;
+      font-weight: bold;
+    }
+
+    .praise-box {
+      margin-top: 6px;
+      font-size: clamp(12px, 1.8vw, 14px);
+      text-align: center;
+      color: #e85d04;
+      min-height: 32px;
+      padding: 4px 6px;
+    }
+
+    @media (max-width: 700px) {
+      .game-container {
+        flex-direction: column;
+        height: 100%;
+        max-height: none;
+        border-radius: 0;
+      }
+
+      .side-column {
+        width: 100%;
+        max-width: none;
+        min-height: 150px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .game-container {
+        width: 100%;
+        height: 100%;
+        max-width: none;
+        max-height: none;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="game-container">
+  <div class="main-column">
+    <h1>لعبة الأعداد</h1>
+    <div class="teacher-name">أ / صالح الطويلعي</div>
+
+    <div class="problem-box">
+      <div id="problem" class="problem"></div>
+    </div>
+
+    <div class="apples-title">عدّ النجوم الذهبية ثم اكتب العدد:</div>
+    <div class="apples-area-wrapper">
+      <div id="applesArea" class="apples-area"></div>
+    </div>
+
+    <div class="input-area">
+      <label for="answer">ما هو هذا العدد؟</label>
+      <input type="number" id="answer" min="1" max="20" disabled />
+    </div>
+
+    <div class="buttons">
+      <button id="checkBtn" class="btn-check" onclick="checkAnswer()" disabled>تحقق ✔</button>
+    </div>
+
+    <div id="message" class="message"></div>
+
+    <div class="spacer"></div>
+  </div>
+
+  <div class="side-column">
+    <div class="level-title">مستواك الآن</div>
+    <div id="levelBadge" class="level-badge">🌱</div>
+    <div id="levelName" class="level-name">مبتدئ</div>
+    <div id="levelDetail" class="level-detail">ابدأ بحل الأسئلة لتحصل على نقاط أكثر.</div>
+    <div id="sideScore" class="side-score"></div>
+    <div id="streakInfo" class="streak-info"></div>
+    <div id="praiseBox" class="praise-box"></div>
+  </div>
+</div>
+
+<script>
+  const starSound   = new Audio('star.mp3');
+  const correctSound = new Audio('correct.mp3');
+  const wrongSound   = new Audio('wrong.mp3');
+  const streakSound  = new Audio('streak.mp3');
+
+  function playSound(audio) {
+    audio.currentTime = 0;
+    audio.play();
+  }
+
+  function toArabicIndic(num) {
+    const map = ['٠','١','٢','٣','٤','٥','٦','٧','٨','٩'];
+    return String(num).split('').map(d => map[parseInt(d, 10)]).join('');
+  }
+
+  let currentNumber = 0;
+  let points = 0;
+  let total = 0;
+  let streak = 0;
+  let showInterval = null;
+  let items = [];
+
+  function generateNumber() {
+    currentNumber = Math.floor(Math.random() * 20) + 1;
+  }
+
+  function resetStarClasses() {
+    items.forEach(star => {
+      star.classList.remove('item-glow', 'item-shake', 'item-fade');
+    });
+    const applesDiv = document.getElementById('applesArea');
+    const oldEmpty = applesDiv.querySelectorAll('.item-empty');
+    oldEmpty.forEach(el => el.remove());
+  }
+
+  function showItemsGradually() {
+    const applesDiv = document.getElementById('applesArea');
+    const answerInput = document.getElementById('answer');
+    const checkBtn = document.getElementById('checkBtn');
+
+    applesDiv.innerHTML = '';
+    answerInput.value = '';
+    answerInput.disabled = true;
+    checkBtn.disabled = true;
+
+    const problemDiv = document.getElementById('problem');
+    problemDiv.textContent = 'تابع ظهور النجوم ثم عدّها بدقة.';
+
+    items = [];
+    for (let i = 0; i < currentNumber; i++) {
+      const span = document.createElement('span');
+      span.className = 'item';
+      span.textContent = '⭐';
+      applesDiv.appendChild(span);
+      items.push(span);
+    }
+
+    let index = 0;
+    if (showInterval) {
+      clearInterval(showInterval);
+      showInterval = null;
+    }
+
+    showInterval = setInterval(() => {
+      if (index < items.length) {
+        items[index].classList.add('visible');
+        playSound(starSound);
+        index++;
+      } else {
+        clearInterval(showInterval);
+        showInterval = null;
+        answerInput.disabled = false;
+        checkBtn.disabled = false;
+        answerInput.focus();
+      }
+    }, 450);
+  }
+
+  function newProblem() {
+    generateNumber();
+    document.getElementById('message').textContent = '';
+    resetStarClasses();
+    showItemsGradually();
+    updateScore();
+  }
+
+  function highlightStarsForAnswer(userAnswer) {
+    resetStarClasses();
+    for (let i = 0; i < items.length; i++) {
+      if (i < userAnswer) {
+        items[i].classList.add('item-glow');
+      }
+    }
+  }
+
+  function animateCorrect() {
+    items.forEach(star => {
+      star.classList.add('item-shake');
+    });
+  }
+
+  function animateWrong(userAnswer) {
+    const applesDiv = document.getElementById('applesArea');
+
+    const oldEmpty = applesDiv.querySelectorAll('.item-empty');
+    oldEmpty.forEach(el => el.remove());
+
+    for (let i = 0; i < items.length; i++) {
+      if (i < userAnswer) {
+        items[i].classList.add('item-glow');
+      } else {
+        items[i].classList.add('item-fade');
+      }
+    }
+
+    if (userAnswer > currentNumber) {
+      const extra = userAnswer - currentNumber;
+      for (let i = 0; i < extra; i++) {
+        const circle = document.createElement('span');
+        circle.className = 'item-empty';
+        applesDiv.appendChild(circle);
+      }
+    }
+  }
+
+  function checkAnswer() {
+    const input = document.getElementById('answer');
+    const messageDiv = document.getElementById('message');
+
+    if (input.value === '') {
+      messageDiv.textContent = 'جرب العد بهدوء ثم اكتب العدد الذي توصلت إليه.';
+      messageDiv.className = 'message wrong';
+      return;
+    }
+
+    const userAnswer = parseInt(input.value, 10);
+    const correctAnswer = currentNumber;
+
+    total++;
+
+    highlightStarsForAnswer(userAnswer);
+
+    if (userAnswer === correctAnswer) {
+      points++;
+      streak++;
+
+      const correctStr = toArabicIndic(correctAnswer);
+      messageDiv.textContent = 'أحسنت! عدد النجوم هو ' + correctStr + ' ✔';
+      messageDiv.className = 'message correct';
+
+      playSound(correctSound);
+      animateCorrect();
+
+      if (streak === 3 || streak === 5 || streak === 7) {
+        playSound(streakSound);
+      }
+
+      updateScore();
+
+      setTimeout(() => {
+        newProblem();
+      }, 1200);
+    } else {
+      streak = 0;
+      messageDiv.textContent = 'محاولة جميلة! أعد العد مرة أخرى خطوة خطوة وستنجح.';
+      messageDiv.className = 'message wrong';
+
+      playSound(wrongSound);
+      animateWrong(userAnswer);
+
+      updateScore();
+    }
+  }
+
+  function updateScore() {
+    const sideScore = document.getElementById('sideScore');
+    sideScore.textContent = 'إجابات صحيحة: ' + points + ' | خاطئة: ' + (total - points);
+
+    const streakInfo = document.getElementById('streakInfo');
+    const praiseBox = document.getElementById('praiseBox');
+
+    if (streak > 1) {
+      streakInfo.textContent = 'سلسلة نجاح متتالية: ' + streak;
+    } else if (streak === 1) {
+      streakInfo.textContent = 'بداية موفقة! استمر في المحاولة.';
+    } else {
+      streakInfo.textContent = '';
+    }
+
+    if (streak === 0) {
+      praiseBox.textContent = '';
+    } else if (streak === 2) {
+      praiseBox.textContent = '👍 إجابتان صحيحتان متتاليتان، ممتاز!';
+    } else if (streak === 3) {
+      praiseBox.textContent = '🎉 ثلاث إجابات صحيحة متتالية، أنت تتقدم بشكل رائع!';
+    } else if (streak >= 4 && streak < 6) {
+      praiseBox.textContent = '🌟 استمر! لديك سلسلة جميلة من الإجابات الصحيحة (' + streak + ').';
+    } else if (streak >= 6) {
+      praiseBox.textContent = '🏅 بطل الأعداد! حافظ على هذه السلسلة المميزة (' + streak + ').';
+    }
+
+    updateLevel();
+  }
+
+  function updateLevel() {
+    const badge = document.getElementById('levelBadge');
+    const name = document.getElementById('levelName');
+    const detail = document.getElementById('levelDetail');
+
+    let ratio = 0;
+    if (total > 0) {
+      ratio = points / total;
+    }
+
+    if (total < 3) {
+      badge.textContent = '🌱';
+      name.textContent = 'مبتدئ';
+      detail.textContent = 'ابدأ بحل المزيد من الأسئلة لترى تقدمك.';
+    } else if (ratio < 0.5) {
+      badge.textContent = '⭐';
+      name.textContent = 'مبتدئ نشيط';
+      detail.textContent = 'استمر في العدّ بهدوء، ستحصل على نتائج أفضل.';
+    } else if (ratio < 0.8) {
+      badge.textContent = '🌟';
+      name.textContent = 'جيّد';
+      detail.textContent = 'أحسنت! أنت تتعلم الأعداد بسرعة.';
+    } else {
+      badge.textContent = '🏆';
+      name.textContent = 'متميز';
+      detail.textContent = 'رائع! يمكنك مساعدة زملائك في التعرف على الأعداد الآن.';
+    }
+  }
+
+  window.onload = newProblem;
+</script>
+
+</body>
+</html>
